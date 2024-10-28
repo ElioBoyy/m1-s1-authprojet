@@ -1,0 +1,428 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum UserRole {
+  USER
+  DOCTOR
+  ADMIN
+}
+
+model UserProfile {
+  // user props
+  id        String   @id @default(uuid())
+  avatar    String?  @db.LongText
+  firstName String
+  lastName  String
+  email     String   @unique
+  password  String
+  birthDate DateTime
+  activated Boolean  @default(true)
+  role      UserRole @default(USER)
+  sexe      String
+
+  // address
+  adresseRegion      String?
+  adresseDepartement String?
+  adresseVille       String?
+  adresseRueEtNumero String?
+
+  // contact
+  telephoneMobile String?
+  telephoneFix    String?
+
+  // social creds
+  nbVotesPour         Int?    @default(0)
+  nbVotesContre       Int?    @default(0)
+  domainePrincipal    String?
+  domainesSecondaires String?
+
+  // relations
+  abonnes       UserProfile[] @relation("UserProfileAbonnes")
+  abonnements   UserProfile[] @relation("UserProfileAbonnes")
+  messages      Message[]
+  conversations Json?
+
+  // social media
+  socialWebsite   String?
+  socialYoutube   String?
+  socialTwitter   String?
+  socialFacebook  String?
+  socialLinkedin  String?
+  socialInstagram String?
+  video           String?
+
+  // professionel props
+  description String?     @db.LongText
+  metier      String?
+  tags        String?
+  available   Available[]
+  prixPcr     Float?
+  reviews     Review[]
+
+  // timestamps
+  dateDeCreation     DateTime @default(now())
+  dateDeModification DateTime @updatedAt()
+
+  // relations
+  devisProfessionel        Devis[]         @relation("DevisProfessionel")
+  devisPatient             Devis[]         @relation("DevisPatient")
+  notificationProfessionel Notification[]  @relation("NotificationProfessionel")
+  notificationPatient      Notification[]  @relation("NotificationPatient")
+  notificationSender       Notification[]  @relation("NotificationSender")
+  notificationReciever     Notification[]  @relation("NotificationReciever")
+  post                     Post[]
+  postLike                 PostLike[]
+  postComment              PostComment[]
+  rendezVousProfessionel   RendezVous[]    @relation("RendezVousProfessionel")
+  rendezVousPatient        RendezVous[]    @relation("RendezVousPatient")
+  reviewComment            ReviewComment[]
+  diplomes                 Diplome[]
+  conversationsCrees       Conversation[]  @relation("MembreCreateur")
+  conversationsRejointes   Conversation[]  @relation("MembreSuiveur")
+  userLikes                ReviewLike[]
+  Antecedents              Antecedent[]
+  SuiviPatient             Suivi[]         @relation("PatientProfile")
+  SuiviMedecin             Suivi[]         @relation("MedecinProfile")
+  JWTToken                 JWTToken[]
+  carteFactu               carteFactu[]
+  VotePour                 VotePour[]
+}
+
+model carteFactu {
+  id                                String  @id @default(uuid())
+  userProfileId                     String
+  nomCarte                          String
+  numeroCarteQuatreDerniersChiffres String
+  numeroCarte                       String
+  dateExpiration                    String
+  cvv                               String?
+
+  // relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model VotePour {
+  id            String @id @default(uuid())
+  userProfileId String
+  voteType      Int
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  user UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model JWTToken {
+  id                  String @id @default(uuid())
+  token               String @db.LongText
+  userId              String
+  isActive            Int    @default(1)
+  validUntilTimeStamp String
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  user UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Antecedent {
+  id             String         @id @default(uuid())
+  userProfileId  String
+  type           TypeAntecedent
+  details        String
+  dateAntecedent DateTime
+  nomMedecin     String
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model Suivi {
+  id               String  @id @default(uuid())
+  patientProfileId String
+  medecinProfileId String
+  diagnostique     String
+  traitement       String?
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  patientProfile UserProfile @relation("PatientProfile", fields: [patientProfileId], references: [id], onDelete: Cascade)
+  medecinProfile UserProfile @relation("MedecinProfile", fields: [medecinProfileId], references: [id], onDelete: Cascade)
+}
+
+enum TypeAntecedent {
+  CHIRURGICAL
+  FAMILIAUX
+  PSYCHOLOGIQUES
+  TOXICOLOGIQUES
+  TRAUMATIQUES
+  VACCINAUX
+  ALLERGIQUES
+  AUTRES
+}
+
+model Diplome {
+  id                   String   @id @default(uuid())
+  userProfileId        String
+  diplomeName          String
+  diplomeDateObtention DateTime
+  imageDiplome         String
+
+  // relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+enum EtatDevis {
+  EN_ATTENTE
+  ACCEPTE
+  REFUSE
+}
+
+model Devis {
+  id             String    @id @default(uuid())
+  professionelId String
+  patientId      String
+  rendezVousId   String
+  prixAvantTVA   Float
+  TVA            Float     @default(0.2)
+  prixFinal      Float
+  contenu        String
+  description    String?
+  etat           EtatDevis @default(EN_ATTENTE)
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  professionel UserProfile @relation("DevisProfessionel", fields: [professionelId], references: [id])
+  patient      UserProfile @relation("DevisPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  rendezVous   RendezVous  @relation(fields: [rendezVousId], references: [id])
+}
+
+enum EtatNotification {
+  NON_LU
+  LU
+}
+
+model Notification {
+  id             String           @id @default(uuid())
+  professionelId String
+  patientId      String
+  envoyeurId     String
+  reveveurId     String
+  rendezVousId   String
+  etat           EtatNotification @default(NON_LU)
+  title          String
+  contenu        String
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  professionel UserProfile @relation("NotificationProfessionel", fields: [professionelId], references: [id], onDelete: Cascade)
+  patient      UserProfile @relation("NotificationPatient", fields: [patientId], references: [id], onDelete: Cascade)
+  sender       UserProfile @relation("NotificationSender", fields: [envoyeurId], references: [id], onDelete: Cascade)
+  reciever     UserProfile @relation("NotificationReciever", fields: [reveveurId], references: [id], onDelete: Cascade)
+  rendezVous   RendezVous  @relation(fields: [rendezVousId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id            String        @id @default(uuid())
+  userProfileId String
+  titre         String
+  contenu       String
+  image         String?
+  likes         PostLike[]
+  commentaires  PostComment[]
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  user UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model PostLike {
+  id            String @id @default(uuid())
+  userProfileId String
+  postId        String
+
+  // relations
+  user UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  post Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+model PostComment {
+  id            String @id @default(uuid())
+  userProfileId String
+  postId        String
+  titre         String
+  contenu       String
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  user UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  post Post        @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+enum TypeRendezVous {
+  CONSULTATION
+  EXAMEN
+  AUTRE
+}
+
+enum EtatRendezVous {
+  A_VENIR
+  PASSE
+  ANNULE
+}
+
+model RendezVous {
+  id             String         @id @default(uuid())
+  professionelId String
+  patientId      String
+  startDate      DateTime
+  endDate        DateTime?
+  duration       Float
+  etat           EtatRendezVous @default(A_VENIR)
+  typeRendezVous TypeRendezVous @default(CONSULTATION)
+  description    String         @db.LongText
+  prix           Float
+  fichierJoint   String
+
+  // relations
+  professionel UserProfile @relation("RendezVousProfessionel", fields: [professionelId], references: [id], onDelete: Cascade)
+  patient      UserProfile @relation("RendezVousPatient", fields: [patientId], references: [id], onDelete: Cascade)
+
+  // external relations
+  devis         Devis[]
+  notifications Notification[]
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Available {
+  id            String   @id @default(uuid())
+  userProfileId String
+  startDate     DateTime
+  endDate       DateTime
+
+  // relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Review {
+  id            String          @id @default(uuid())
+  userProfileId String
+  titre         String
+  contenu       String
+  comments      ReviewComment[]
+  likes         ReviewLike[]
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  userProfile UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+}
+
+model ReviewLike {
+  id       String @id @default(uuid())
+  reviewId String
+  userId   String
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  review Review      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user   UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model ReviewComment {
+  id            String @id @default(uuid())
+  userProfileId String
+  reviewId      String
+  text          String
+
+  // reviewComment stats
+  nbYes Int @default(0)
+  nbNo  Int @default(0)
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  // relations
+  user   UserProfile @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  review Review      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id             String  @id @default(uuid())
+  userProfileId  String
+  conversationId String
+  text           String
+  isLiked        Boolean @default(false)
+
+  // relations
+  user         UserProfile  @relation(fields: [userProfileId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+}
+
+model Conversation {
+  id               String      @id @default(uuid())
+  name             String
+  membreCreateurId String
+  membreCreateur   UserProfile @relation("MembreCreateur", fields: [membreCreateurId], references: [id], onDelete: Cascade)
+  membreSuiveurId  String
+  membreSuiveur    UserProfile @relation("MembreSuiveur", fields: [membreSuiveurId], references: [id], onDelete: Cascade)
+
+  // relations
+  messages Message[]
+
+  // timestamps
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt()
+
+  @@unique([membreCreateurId, membreSuiveurId])
+  @@index(membreSuiveurId)
+}
